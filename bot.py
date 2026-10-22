@@ -96,7 +96,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(f"بخش «{query.data}» به‌زودی اضافه می‌شود.")
 
 def main():
-    # اجرای وب‌سرور در یک ترد جداگانه تا Render راضی باشد
     threading.Thread(target=run_web_server, daemon=True).start()
     
     if not TOKEN:
