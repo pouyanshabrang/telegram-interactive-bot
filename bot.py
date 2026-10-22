@@ -1,13 +1,29 @@
 import logging
 import requests
+import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# ⬇️ توکن ربات جدید خود را اینجا بین دابل کوتیشن بگذارید ⬇️
-TOKEN = "8937575137:AAG73aaKzm8wtEiRPgYQc39aJzp_RVMtjhg"
+# خواندن توکن از متغیر محیطی Render
+TOKEN = os.environ.get("BOT_TOKEN")
+PORT = int(os.environ.get("PORT", 10000))
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
+# --- وب‌سرور ساده برای اینکه Render فکر نکند برنامه خراب است ---
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is alive!")
+
+def run_web_server():
+    server = HTTPServer(('0.0.0.0', PORT), HealthCheckHandler)
+    server.serve_forever()
+
+# --- کدهای ربات تلگرام ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (
         "🌐 به ربات ایران و جهان خبر خوش آمدید!\n\n"
@@ -35,7 +51,7 @@ async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
-    await query.answer() # قطع کردن لودینگ تلگرام
+    await query.answer()
     
     if query.data == "countries":
         keyboard = [
@@ -80,12 +96,14 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.message.reply_text(f"بخش «{query.data}» به‌زودی اضافه می‌شود.")
 
 def main():
-    if not TOKEN or TOKEN == "توکن_جدید_خود_را_اینجا_بگذارید":
-        print("لطفا توکن ربات را در متغیر TOKEN قرار دهید!")
+    # اجرای وب‌سرور در یک ترد جداگانه
+    threading.Thread(target=run_web_server, daemon=True).start()
+    
+    if not TOKEN:
+        print("خطا: توکن ربات یافت نشد!")
         return
         
     app = Application.builder().token(TOKEN).build()
-    
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("menu", menu))
     app.add_handler(CallbackQueryHandler(button_handler))
